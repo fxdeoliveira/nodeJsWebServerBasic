@@ -1,34 +1,57 @@
-const { response } = require('express');
+const { response, request } = require('express');
+const bcyptjs = require('bcryptjs');
+const User = require('../models/user');
+const { validationResult } = require('express-validator');
 
-const usersGet = (req, res = response) => {
+const usersGet = async(req = request, res = response) => {
 
-    const params = req.query;
+    const {q, name = 'Not name'} = req.query;
+
+    const  users = await User.find();
 
     res.json({
-        ok: 'get= controller',
-        number: '1',
-        query
+        users
     })
 }
 
-const usersPut = (req, res = response) => {
+const usersPut = async(req, res = response) => {
 
-    const id = req.params.id;
+    const id = req.params.id; 
+    const {_id, password, google, email, ...rest} = req.body;
+
+    if(password){
+        const salt = bcyptjs.genSaltSync();
+        rest.password = bcyptjs.hashSync(password, salt);  
+    }
+
+    const user = await User.findByIdAndUpdate(id, rest);
+
     res.json({
         ok: 'put= controller',
-        number: '1',
-        id
+        user
     })
 }
 
-const usersPost = (req, res = response) => {
-    const body =  req.body;
+const usersPost = async(req, res = response) => {
 
-    res.json({
-        ok: 'post= controller',
-        number: '1',
-        body
-    })
+  
+    const {name, password, email, role} =  req.body;
+    const user = new User({name, password, email, role});
+    
+    const emailExist = await User.findOne({email});
+    if(emailExist){
+        return res.status(400).json({
+            msg: 'Ese correo esta en uso'
+        })
+    }
+
+    const salt = bcyptjs.genSaltSync();
+    user.password = bcyptjs.hashSync(password, salt);
+
+
+    await user.save();
+
+    res.json(user);
 }
 
 const usersPatch = (req, res = response) => {
